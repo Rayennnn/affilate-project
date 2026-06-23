@@ -1,0 +1,65 @@
+# Supabase project configuration.
+# Generated for the UGC affiliate marketplace backend.
+
+project_id = "ugc-affiliate-marketplace"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+# ---------------------------------------------------------------------------
+# Edge Functions
+# Public endpoints disable JWT verification so anon/GTM/customers can call them.
+# Admin endpoints keep verify_jwt = true; they additionally check role == admin.
+# ---------------------------------------------------------------------------
+[functions.track-click]
+verify_jwt = false
+
+[functions.record-conversion]
+verify_jwt = false
+
+[functions.sync-converty-sheet]
+verify_jwt = true
+
+[functions.generate-payout-report]
+verify_jwt = true
+
+[functions.create-payout]
+verify_jwt = true
+
+# Hourly Converty sheet sync. Provide the spreadsheet id via the request body
+# from your scheduler, or hard-code one in a wrapper. Requires pg_cron + pg_net,
+# or use an external scheduler hitting the function URL with the service role key.
+# Example pg_cron job (run once in SQL editor):
+#   select cron.schedule(
+#     'sync-converty-hourly', '0 * * * *',
+#     $$ select net.http_post(
+#          url := 'https://<ref>.functions.supabase.co/sync-converty-sheet',
+#          headers := jsonb_build_object(
+#            'Content-Type','application/json',
+#            'Authorization','Bearer <SERVICE_ROLE_KEY>'),
+#          body := jsonb_build_object('spreadsheet_id','<SHEET_ID>','sheet_name','Sheet1')
+#        ); $$
+#   );
