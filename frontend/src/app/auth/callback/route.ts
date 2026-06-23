@@ -8,6 +8,7 @@ import { getDashboardPath, type UserRole } from "@/lib/auth-redirect";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const next = searchParams.get("next");
   const roleParam = searchParams.get("role");
 
   if (!code) {
@@ -33,6 +34,10 @@ export async function GET(request: Request) {
     .eq("id", data.user.id)
     .single();
   const role = (profile?.role as UserRole) ?? (roleParam as UserRole) ?? "creator";
+
+  if (next) {
+    return NextResponse.redirect(`${origin}${next}`);
+  }
 
   return NextResponse.redirect(`${origin}${getDashboardPath(role)}`);
 }

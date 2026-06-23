@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleIcon } from "@/components/AuthIcons";
+import { AuthBackground } from "@/components/auth/AuthBackground";
 import { getDashboardPath, type UserRole } from "@/lib/auth-redirect";
 import { supabase } from "@/lib/supabase";
 
@@ -64,18 +65,7 @@ export function LoginForm() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12">
-      {/* Background grid */}
-      <div className="login-grid pointer-events-none absolute inset-0" />
-
-      {/* Blurred dashboard shapes */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute top-[12%] left-[8%] h-32 w-56 rounded-2xl bg-[var(--blur-shape)] blur-sm" />
-        <div className="absolute top-[18%] right-[10%] h-24 w-40 rounded-2xl bg-[var(--blur-shape)] blur-sm" />
-        <div className="absolute bottom-[20%] left-[12%] h-28 w-48 rounded-2xl bg-[var(--blur-shape)] blur-sm" />
-        <div className="absolute right-[15%] bottom-[28%] h-20 w-36 rounded-2xl bg-[var(--blur-shape)] blur-sm" />
-        <div className="absolute top-[35%] left-[20%] h-16 w-28 rounded-xl bg-[var(--blur-shape)] blur-sm" />
-        <div className="absolute top-[42%] right-[22%] h-14 w-24 rounded-xl bg-[var(--blur-shape)] blur-sm" />
-      </div>
+      <AuthBackground />
 
       {/* Earned today badge */}
       <div className="absolute top-6 right-6 z-10 sm:top-8 sm:right-8">
@@ -189,7 +179,7 @@ export function LoginForm() {
             </div>
             <div className="mt-2 text-right">
               <Link
-                href="#forgot-password"
+                href="/forgot-password"
                 className="text-sm text-[var(--accent-violet-soft)] transition-colors hover:text-[var(--accent-violet-hover)]"
               >
                 Forgot password?
