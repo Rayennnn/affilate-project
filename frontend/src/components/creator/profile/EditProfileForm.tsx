@@ -105,17 +105,20 @@ export function EditProfileForm({ initial }: { initial: EditProfileInitialData }
 
         const niche = form.categories.map((c) => c.toLowerCase()).join(",");
 
-        await supabase
-          .from("creators")
-          .update({
+        // Upsert (not update) so it also works for creators who don't have a
+        // creators row yet — onboarding. creators.profile_id is unique.
+        await supabase.from("creators").upsert(
+          {
+            profile_id: user.id,
             bio: form.bio,
             niche: niche || "general",
             instagram_url: form.instagramUrl || null,
             tiktok_url: form.tiktokUrl || null,
             youtube_url: form.youtubeUrl || null,
             audience_size: audienceFromReach(form.monthlyReach),
-          })
-          .eq("profile_id", user.id);
+          },
+          { onConflict: "profile_id" },
+        );
       }
 
       setSaved(form);

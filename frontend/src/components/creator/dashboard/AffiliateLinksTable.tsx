@@ -49,6 +49,13 @@ export function AffiliateLinksTable({ links }: { links: AffiliateLinkRow[] }) {
             </tr>
           </thead>
           <tbody>
+            {links.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-10 text-center text-sm text-[var(--text-secondary)]">
+                  No affiliate links yet. Browse products and get approved to start earning.
+                </td>
+              </tr>
+            )}
             {links.map((link) => (
               <tr
                 key={link.refCode}

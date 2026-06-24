@@ -85,12 +85,51 @@ function nicheLabel(niche: string | null | undefined): string {
   return NICHE_LABELS[niche.toLowerCase()] ?? niche.charAt(0).toUpperCase() + niche.slice(1);
 }
 
+// A flat zero baseline (recent dates) used when the creator has no earnings yet,
+// so the chart renders intentionally empty instead of falling back to demo data.
+function flatBaseline(count: number): ChartBar[] {
+  const today = new Date();
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (count - 1 - i));
+    return {
+      label: d.toLocaleDateString("en-US", { day: "numeric", month: "short" }),
+      value: 0,
+    };
+  });
+}
+
+// A fully zeroed dashboard for a creator with no activity yet (real, not demo).
+function emptyDashboard(): CreatorDashboardData {
+  const nextPayoutDate = new Date();
+  nextPayoutDate.setDate(15);
+  if (nextPayoutDate < new Date()) {
+    nextPayoutDate.setMonth(nextPayoutDate.getMonth() + 1);
+  }
+  return {
+    stats: [
+      { label: "Total Earned", value: "$0.00" },
+      { label: "Total Clicks", value: "0" },
+      { label: "Conversions", value: "0" },
+      { label: "Active Links", value: "0" },
+    ],
+    links: [],
+    topProducts: [],
+    nextPayout: {
+      amount: "$0.00",
+      date: `Scheduled for ${nextPayoutDate.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`,
+    },
+    chartWeek: flatBaseline(7),
+    chartMonth: flatBaseline(15),
+  };
+}
+
 function buildChartFromDaily(
   daily: { date: string; amount: number }[],
   count: number,
 ): ChartBar[] {
   const slice = daily.slice(-count);
-  if (slice.length === 0) return getDemoChartMonth().slice(-count);
+  if (slice.length === 0) return flatBaseline(count);
 
   const max = Math.max(...slice.map((d) => d.amount), 1);
   const peakIndex = slice.reduce(
@@ -198,28 +237,37 @@ export function getDemoDashboardData(): CreatorDashboardData {
   };
 }
 
-function getDemoChartMonth(): ChartBar[] {
-  return getDemoDashboardData().chartMonth;
-}
-
 export async function getCreatorDashboardData(): Promise<CreatorDashboardData> {
-  const demo = getDemoDashboardData();
-
   try {
     const supabase = await createSupabaseServer();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return demo;
+    if (!user) return emptyDashboard();
 
-    const { data: creator } = await supabase
+    // Make sure the logged-in creator has a creators row (onboarding). Without
+    // it the dashboard could never show real data. RLS lets a creator insert
+    // their own row (profile_id = auth.uid()).
+    let creator: { id: string; niche: string | null; is_verified: boolean | null } | null = null;
+    const { data: existing } = await supabase
       .from("creators")
       .select("id, niche, is_verified")
       .eq("profile_id", user.id)
       .maybeSingle();
+    creator = existing;
 
-    if (!creator) return demo;
+    if (!creator) {
+      const { data: created } = await supabase
+        .from("creators")
+        .insert({ profile_id: user.id, niche: "general" })
+        .select("id, niche, is_verified")
+        .maybeSingle();
+      creator = created ?? null;
+    }
+
+    // No creator row (e.g. insert blocked) -> real empty dashboard, not demo.
+    if (!creator) return emptyDashboard();
 
     const { data: rows } = await supabase
       .from("creator_dashboard")
@@ -229,7 +277,8 @@ export async function getCreatorDashboardData(): Promise<CreatorDashboardData> {
 
     const linkRows = (rows ?? []).filter((r) => r.ref_code);
 
-    if (linkRows.length === 0) return demo;
+    // No approved affiliate links yet -> show the real zero state.
+    if (linkRows.length === 0) return emptyDashboard();
 
     const totalEarned = linkRows.reduce((sum, r) => sum + Number(r.total_earned ?? 0), 0);
     const totalClicks = linkRows.reduce((sum, r) => sum + Number(r.clicks ?? 0), 0);
@@ -275,10 +324,6 @@ export async function getCreatorDashboardData(): Promise<CreatorDashboardData> {
       };
     });
 
-    while (topProducts.length < 3) {
-      topProducts.push(demo.topProducts[topProducts.length]);
-    }
-
     const { data: conversions } = await supabase
       .from("conversions")
       .select("commission_amount, created_at")
@@ -307,40 +352,21 @@ export async function getCreatorDashboardData(): Promise<CreatorDashboardData> {
 
     return {
       stats: [
-        {
-          label: "Total Earned",
-          value: formatCurrency(totalEarned),
-          change: totalEarned > 0 ? { value: "+12%", positive: true } : undefined,
-        },
-        {
-          label: "Total Clicks",
-          value: formatCompact(totalClicks),
-          change: totalClicks > 0 ? { value: "+5%", positive: true } : undefined,
-        },
-        {
-          label: "Conversions",
-          value: totalConversions.toLocaleString("en-US"),
-          change:
-            totalConversions > 0
-              ? { value: totalConversions >= 10 ? "-2%" : "+8%", positive: totalConversions < 10 }
-              : undefined,
-        },
-        {
-          label: "Active Links",
-          value: String(linkRows.length),
-          status: "Stable",
-        },
+        { label: "Total Earned", value: formatCurrency(totalEarned) },
+        { label: "Total Clicks", value: formatCompact(totalClicks) },
+        { label: "Conversions", value: totalConversions.toLocaleString("en-US") },
+        { label: "Active Links", value: String(linkRows.length) },
       ],
-      links: links.length > 0 ? links : demo.links,
+      links,
       topProducts,
       nextPayout: {
-        amount: formatCurrency(pendingPayout > 0 ? pendingPayout : 1240),
+        amount: formatCurrency(pendingPayout),
         date: `Scheduled for ${nextPayoutDate.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`,
       },
-      chartWeek: chartWeek.length > 0 ? chartWeek : demo.chartWeek,
-      chartMonth: chartMonth.length > 0 ? chartMonth : demo.chartMonth,
+      chartWeek,
+      chartMonth,
     };
   } catch {
-    return demo;
+    return emptyDashboard();
   }
 }

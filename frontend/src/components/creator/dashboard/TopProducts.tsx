@@ -14,6 +14,12 @@ export function TopProducts({ products }: { products: TopProduct[] }) {
         </h3>
       </div>
 
+      {products.length === 0 && (
+        <p className="py-6 text-center text-sm text-[var(--text-secondary)]">
+          No sales data yet.
+        </p>
+      )}
+
       <ul className="space-y-4">
         {products.map((product) => (
           <li key={product.rank} className="flex items-start gap-3">

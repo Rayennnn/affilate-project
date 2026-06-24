@@ -81,7 +81,7 @@ export function ForgotPasswordForm() {
               Forgot your password?
             </h1>
             <p className="mt-3 text-center text-sm text-muted">
-              No worries. Enter your email and we'll send you a reset link.
+              No worries. Enter your email and we&apos;ll send you a reset link.
             </p>
 
             {/* Form */}
@@ -167,7 +167,7 @@ export function ForgotPasswordForm() {
             </div>
 
             <div className="mt-8 text-center text-sm text-muted">
-              Didn't receive it?{" "}
+              Didn&apos;t receive it?{" "}
               <button
                 type="button"
                 onClick={handleResend}
