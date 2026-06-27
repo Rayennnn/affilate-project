@@ -16,7 +16,7 @@ export function TopProducts({ products }: { products: TopProduct[] }) {
 
       {products.length === 0 && (
         <p className="py-6 text-center text-sm text-[var(--text-secondary)]">
-          No sales data yet.
+          No product performance yet.
         </p>
       )}
 

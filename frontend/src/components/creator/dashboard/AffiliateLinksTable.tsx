@@ -36,6 +36,11 @@ export function AffiliateLinksTable({ links }: { links: AffiliateLinkRow[] }) {
         </Link>
       </div>
 
+      {links.length === 0 ? (
+        <p className="py-12 text-center text-sm text-[var(--text-secondary)]">
+          No affiliate links yet. Apply to a campaign to generate your first link.
+        </p>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px]">
           <thead>
@@ -102,6 +107,7 @@ export function AffiliateLinksTable({ links }: { links: AffiliateLinkRow[] }) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

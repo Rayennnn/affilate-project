@@ -10,6 +10,19 @@ type TopEarnerProps = {
 };
 
 export function ProfileTopEarner({ topEarner }: { topEarner: TopEarnerProps }) {
+  if (!topEarner.productName) {
+    return (
+      <div className="rounded-2xl border border-[var(--border-outline)] bg-[var(--bg-card)] p-6">
+        <span className="inline-flex rounded-md bg-[var(--accent-lime-bg)] px-2.5 py-1 text-[10px] font-bold tracking-wider text-[var(--accent-lime-bright)] uppercase">
+          Top Earner
+        </span>
+        <p className="mt-4 text-sm text-[var(--text-secondary)]">
+          No earnings yet — your best-performing product will appear here.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative overflow-hidden rounded-2xl border border-[var(--border-outline)] bg-[var(--bg-card)]">
       <div className="relative h-36 w-full">

@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { getApplicants } from "@/lib/brand-applicants";
-import { ApplicantsContent } from "@/components/brand/ApplicantsContent";
+import { getCreators } from "@/lib/brand-creators";
+import { InviteCreatorsContent } from "@/components/brand/InviteCreatorsContent";
 
 export const metadata: Metadata = {
-  title: "Applicants | Creatorly Brand",
+  title: "Browse Creators | Creatorly Brand",
 };
 
-export default async function ApplicantsPage() {
+export default async function InviteCreatorsPage() {
   const supabase = await createSupabaseServer();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const data = await getApplicants();
+  const creators = await getCreators();
 
   return (
     <div className="space-y-6">
@@ -24,15 +24,19 @@ export default async function ApplicantsPage() {
           className="text-[32px] font-bold text-[var(--text-primary)]"
           style={{ fontFamily: "var(--font-space-grotesk)" }}
         >
-          Applicants
+          Browse creators
         </h2>
         <p className="mt-1 text-[var(--text-secondary)]">
-          Review creators who applied to your campaigns. Approving one generates their affiliate
-          link automatically.
+          Discover UGC creators on the network. Creators apply to your active campaigns — review
+          them under{" "}
+          <a href="/brand/applicants" className="text-[var(--accent-violet-light)] hover:underline">
+            Applicants
+          </a>
+          .
         </p>
       </div>
 
-      <ApplicantsContent applicants={data.applicants} />
+      <InviteCreatorsContent creators={creators} />
     </div>
   );
 }

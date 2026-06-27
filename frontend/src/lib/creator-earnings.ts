@@ -1,25 +1,25 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { getOrCreateCreatorId } from "@/lib/creator";
 
 export type EarningRow = {
   id: string;
-  date: string;
   productName: string;
   saleAmount: number;
   commission: number;
   status: string;
+  date: string;
 };
 
 export type PayoutRow = {
   id: string;
   amount: number;
   status: string;
-  period: string;
-  paidAt: string | null;
   reference: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
 };
 
-export type CreatorEarningsData = {
+export type EarningsData = {
+  hasCreator: boolean;
   totalEarned: number;
   pending: number;
   paid: number;
@@ -27,7 +27,8 @@ export type CreatorEarningsData = {
   payouts: PayoutRow[];
 };
 
-const EMPTY: CreatorEarningsData = {
+const EMPTY: EarningsData = {
+  hasCreator: false,
   totalEarned: 0,
   pending: 0,
   paid: 0,
@@ -35,68 +36,62 @@ const EMPTY: CreatorEarningsData = {
   payouts: [],
 };
 
-function fmtDate(value: string | null): string {
-  if (!value) return "—";
-  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
+export async function getCreatorEarnings(): Promise<EarningsData> {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return EMPTY;
 
-export async function getCreatorEarnings(): Promise<CreatorEarningsData> {
-  try {
-    const supabase = await createSupabaseServer();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return EMPTY;
+  const { data: creator } = await supabase
+    .from("creators")
+    .select("id")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+  if (!creator) return EMPTY;
 
-    const creatorId = await getOrCreateCreatorId(supabase, user.id);
-    if (!creatorId) return EMPTY;
+  const { data: convRows } = await supabase
+    .from("conversions")
+    .select("id, sale_amount, commission_amount, status, created_at, campaigns(product_name)")
+    .eq("creator_id", creator.id)
+    .order("created_at", { ascending: false });
 
-    const { data: rows } = await supabase
-      .from("creator_dashboard")
-      .select("total_earned, pending_payout, total_paid")
-      .eq("creator_id", creatorId)
-      .not("ref_code", "is", null);
+  const { data: payoutRows } = await supabase
+    .from("payouts")
+    .select("id, amount, status, reference, period_start, period_end")
+    .eq("creator_id", creator.id)
+    .order("created_at", { ascending: false });
 
-    const totalEarned = (rows ?? []).reduce((s, r) => s + Number(r.total_earned ?? 0), 0);
-    const pending = (rows ?? []).reduce((s, r) => s + Number(r.pending_payout ?? 0), 0);
-    const paid = (rows ?? []).reduce((s, r) => s + Number(r.total_paid ?? 0), 0);
+  const conversions: EarningRow[] = (convRows ?? []).map((c) => {
+    const campaign = c.campaigns as { product_name?: string } | null;
+    return {
+      id: c.id as string,
+      productName: campaign?.product_name ?? "Sale",
+      saleAmount: Number(c.sale_amount ?? 0),
+      commission: Number(c.commission_amount ?? 0),
+      status: c.status as string,
+      date: c.created_at as string,
+    };
+  });
 
-    const { data: convs } = await supabase
-      .from("conversions")
-      .select("id, sale_amount, commission_amount, status, created_at, campaigns(product_name)")
-      .eq("creator_id", creatorId)
-      .order("created_at", { ascending: false })
-      .limit(50);
+  const payouts: PayoutRow[] = (payoutRows ?? []).map((p) => ({
+    id: p.id as string,
+    amount: Number(p.amount ?? 0),
+    status: p.status as string,
+    reference: p.reference ?? null,
+    periodStart: p.period_start ?? null,
+    periodEnd: p.period_end ?? null,
+  }));
 
-    const conversions: EarningRow[] = (convs ?? []).map((c) => {
-      const campaign = c.campaigns as { product_name?: string } | null;
-      return {
-        id: c.id,
-        date: fmtDate(c.created_at),
-        productName: campaign?.product_name ?? "Sale",
-        saleAmount: Number(c.sale_amount ?? 0),
-        commission: Number(c.commission_amount ?? 0),
-        status: c.status,
-      };
-    });
+  const totalEarned = conversions
+    .filter((c) => c.status !== "cancelled")
+    .reduce((s, c) => s + c.commission, 0);
+  const pending = conversions
+    .filter((c) => c.status === "confirmed")
+    .reduce((s, c) => s + c.commission, 0);
+  const paid = conversions
+    .filter((c) => c.status === "paid")
+    .reduce((s, c) => s + c.commission, 0);
 
-    const { data: pays } = await supabase
-      .from("payouts")
-      .select("id, amount, status, period_start, period_end, paid_at, reference")
-      .eq("creator_id", creatorId)
-      .order("created_at", { ascending: false });
-
-    const payouts: PayoutRow[] = (pays ?? []).map((p) => ({
-      id: p.id,
-      amount: Number(p.amount ?? 0),
-      status: p.status,
-      period: `${fmtDate(p.period_start)} – ${fmtDate(p.period_end)}`,
-      paidAt: p.paid_at,
-      reference: p.reference,
-    }));
-
-    return { totalEarned, pending, paid, conversions, payouts };
-  } catch {
-    return EMPTY;
-  }
+  return { hasCreator: true, totalEarned, pending, paid, conversions, payouts };
 }

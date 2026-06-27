@@ -30,6 +30,11 @@ export function ProfileAffiliateLinks({ links }: { links: AffiliateLinkRow[] }) 
         </Link>
       </div>
 
+      {links.length === 0 ? (
+        <p className="py-10 text-center text-sm text-[var(--text-secondary)]">
+          No affiliate links yet.
+        </p>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px]">
           <thead>
@@ -78,6 +83,7 @@ export function ProfileAffiliateLinks({ links }: { links: AffiliateLinkRow[] }) 
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

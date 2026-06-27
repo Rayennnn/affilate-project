@@ -17,6 +17,10 @@ export function ProfileRecentActivity({ activities }: { activities: ProfileActiv
         Recent Activity
       </h2>
 
+      {activities.length === 0 && (
+        <p className="py-8 text-center text-sm text-[var(--text-secondary)]">No recent activity.</p>
+      )}
+
       <div className="space-y-1">
         {activities.map((activity) => {
           const { Icon, bg, color } = iconMap[activity.type];

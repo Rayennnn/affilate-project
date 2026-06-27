@@ -1,152 +1,277 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, Mail, ShieldCheck, Landmark } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export type SettingsInitial = {
   fullName: string;
   email: string;
+  niche: string;
+  bio: string;
+  audienceSize: number;
   iban: string;
+  instagramUrl: string;
+  tiktokUrl: string;
+  youtubeUrl: string;
+  hasCreator: boolean;
 };
 
 const inputClass =
-  "w-full rounded-xl border border-[var(--border-outline)] bg-[var(--bg-input-field)] px-4 py-2.5 text-sm text-[var(--text-on-surface)] outline-none transition-all placeholder:text-[var(--text-placeholder)] focus:border-[var(--accent-violet-light)] focus:ring-1 focus:ring-[var(--accent-violet-light)]";
+  "w-full rounded-xl border border-[var(--border-outline)] bg-[var(--bg-input-field)] px-4 py-3 text-sm text-[var(--text-on-surface)] placeholder:text-[var(--text-placeholder)] outline-none transition-colors focus:border-[var(--accent-violet-light)] focus:ring-1 focus:ring-[var(--accent-violet-light)] disabled:opacity-60";
+const labelClass = "mb-2 block text-sm font-medium text-[var(--text-secondary)]";
 
 export function SettingsForm({ initial }: { initial: SettingsInitial }) {
-  const [form, setForm] = useState(initial);
-  const [saved, setSaved] = useState(initial);
+  const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [savedOk, setSavedOk] = useState(false);
-  const [resetMsg, setResetMsg] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const isDirty = form.fullName !== saved.fullName || form.iban !== saved.iban;
+  const [form, setForm] = useState({
+    fullName: initial.fullName,
+    niche: initial.niche,
+    bio: initial.bio,
+    audienceSize: String(initial.audienceSize || ""),
+    iban: initial.iban,
+    instagramUrl: initial.instagramUrl,
+    tiktokUrl: initial.tiktokUrl,
+    youtubeUrl: initial.youtubeUrl,
+  });
 
-  const handleSave = async () => {
+  const update = (key: keyof typeof form, value: string) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSaved(false);
     setSaving(true);
-    setSavedOk(false);
+
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("profiles").update({ full_name: form.fullName }).eq("id", user.id);
-        await supabase.from("creators").update({ iban: form.iban || null }).eq("profile_id", user.id);
-        setSaved(form);
-        setSavedOk(true);
-        setTimeout(() => setSavedOk(false), 2000);
+      if (!user) {
+        setError("You must be signed in.");
+        setSaving(false);
+        return;
       }
-    } finally {
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ full_name: form.fullName })
+        .eq("id", user.id);
+
+      if (profileError) {
+        setError(profileError.message);
+        setSaving(false);
+        return;
+      }
+
+      if (initial.hasCreator) {
+        const { error: creatorError } = await supabase
+          .from("creators")
+          .update({
+            niche: form.niche || "general",
+            bio: form.bio || null,
+            audience_size: Number(form.audienceSize) || 0,
+            iban: form.iban || null,
+            instagram_url: form.instagramUrl || null,
+            tiktok_url: form.tiktokUrl || null,
+            youtube_url: form.youtubeUrl || null,
+          })
+          .eq("profile_id", user.id);
+
+        if (creatorError) {
+          setError(creatorError.message);
+          setSaving(false);
+          return;
+        }
+      }
+
+      setSaved(true);
+      setSaving(false);
+      router.refresh();
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setError("Something went wrong. Please try again.");
       setSaving(false);
     }
   };
 
-  const handlePasswordReset = async () => {
-    setResetMsg("");
-    const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setResetMsg(error ? error.message : "Reset link sent to your email.");
-  };
-
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <h2
-          className="text-[32px] font-bold text-[var(--text-primary)]"
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400">
+          {error}
+        </div>
+      )}
+
+      <section className="rounded-2xl border border-[var(--border-outline)] bg-[var(--bg-card)] p-6">
+        <h3
+          className="mb-5 text-lg font-bold text-[var(--text-primary)]"
           style={{ fontFamily: "var(--font-space-grotesk)" }}
         >
-          Settings
-        </h2>
-        <p className="mt-2 text-[var(--text-secondary)]">Manage your account and payout details.</p>
-      </div>
-
-      {/* Account */}
-      <section className="rounded-2xl border border-[var(--border-outline)] bg-[var(--bg-card)] p-6">
-        <p className="mb-4 text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase">
           Account
-        </p>
-        <div className="space-y-5">
+        </h3>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-[var(--text-on-surface)]">
-              Full Name
+            <label htmlFor="fullName" className={labelClass}>
+              Display name
             </label>
             <input
-              className={inputClass}
+              id="fullName"
+              type="text"
               value={form.fullName}
-              onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
+              onChange={(e) => update("fullName", e.target.value)}
+              className={inputClass}
             />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-[var(--text-on-surface)]">
+            <label htmlFor="email" className={labelClass}>
               Email
             </label>
-            <div className="flex items-center gap-2 rounded-xl border border-[var(--border-outline)] bg-[var(--bg-hover)] px-4 py-2.5">
-              <Mail className="h-4 w-4 text-[var(--text-secondary)]" />
-              <span className="text-sm text-[var(--text-secondary)]">{form.email}</span>
-            </div>
+            <input id="email" type="email" value={initial.email} disabled className={inputClass} />
           </div>
         </div>
       </section>
 
-      {/* Payout */}
       <section className="rounded-2xl border border-[var(--border-outline)] bg-[var(--bg-card)] p-6">
-        <p className="mb-4 flex items-center gap-2 text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase">
-          <Landmark className="h-4 w-4" /> Payout
-        </p>
-        <label className="mb-2 block text-sm font-medium text-[var(--text-on-surface)]">
-          IBAN (for Konnect payouts)
-        </label>
-        <input
-          className={inputClass}
-          placeholder="TN59 0000 0000 0000 0000 0000"
-          value={form.iban}
-          onChange={(e) => setForm((f) => ({ ...f, iban: e.target.value }))}
-        />
-        <p className="mt-2 text-xs text-[var(--text-secondary)]">
-          Your commissions are paid out to this account.
-        </p>
-      </section>
-
-      {/* Security */}
-      <section className="rounded-2xl border border-[var(--border-outline)] bg-[var(--bg-card)] p-6">
-        <p className="mb-4 flex items-center gap-2 text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase">
-          <ShieldCheck className="h-4 w-4" /> Security
-        </p>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3
+          className="mb-5 text-lg font-bold text-[var(--text-primary)]"
+          style={{ fontFamily: "var(--font-space-grotesk)" }}
+        >
+          Creator profile
+        </h3>
+        {!initial.hasCreator && (
+          <p className="mb-4 rounded-lg bg-[var(--bg-hover)] p-3 text-sm text-[var(--text-secondary)]">
+            No creator record found — only your display name can be updated.
+          </p>
+        )}
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div>
-            <p className="text-sm font-medium text-[var(--text-primary)]">Password</p>
-            <p className="text-sm text-[var(--text-secondary)]">
-              {resetMsg || "Send a reset link to your email."}
-            </p>
+            <label htmlFor="niche" className={labelClass}>
+              Niche
+            </label>
+            <input
+              id="niche"
+              type="text"
+              value={form.niche}
+              onChange={(e) => update("niche", e.target.value)}
+              placeholder="tech, beauty…"
+              disabled={!initial.hasCreator}
+              className={inputClass}
+            />
           </div>
-          <button
-            type="button"
-            onClick={handlePasswordReset}
-            className="rounded-xl border border-[var(--border-outline)] px-4 py-2 text-sm font-medium text-[var(--text-on-surface)] transition-colors hover:bg-[var(--bg-hover)]"
-          >
-            Reset Password
-          </button>
+          <div>
+            <label htmlFor="audienceSize" className={labelClass}>
+              Audience size
+            </label>
+            <input
+              id="audienceSize"
+              type="number"
+              min="0"
+              value={form.audienceSize}
+              onChange={(e) => update("audienceSize", e.target.value)}
+              disabled={!initial.hasCreator}
+              className={inputClass}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label htmlFor="bio" className={labelClass}>
+              Bio
+            </label>
+            <textarea
+              id="bio"
+              rows={3}
+              value={form.bio}
+              onChange={(e) => update("bio", e.target.value)}
+              disabled={!initial.hasCreator}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="instagramUrl" className={labelClass}>
+              Instagram URL
+            </label>
+            <input
+              id="instagramUrl"
+              type="url"
+              value={form.instagramUrl}
+              onChange={(e) => update("instagramUrl", e.target.value)}
+              disabled={!initial.hasCreator}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="tiktokUrl" className={labelClass}>
+              TikTok URL
+            </label>
+            <input
+              id="tiktokUrl"
+              type="url"
+              value={form.tiktokUrl}
+              onChange={(e) => update("tiktokUrl", e.target.value)}
+              disabled={!initial.hasCreator}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="youtubeUrl" className={labelClass}>
+              YouTube URL
+            </label>
+            <input
+              id="youtubeUrl"
+              type="url"
+              value={form.youtubeUrl}
+              onChange={(e) => update("youtubeUrl", e.target.value)}
+              disabled={!initial.hasCreator}
+              className={inputClass}
+            />
+          </div>
         </div>
       </section>
 
-      {/* Save bar */}
+      <section className="rounded-2xl border border-[var(--border-outline)] bg-[var(--bg-card)] p-6">
+        <h3
+          className="mb-5 text-lg font-bold text-[var(--text-primary)]"
+          style={{ fontFamily: "var(--font-space-grotesk)" }}
+        >
+          Payout
+        </h3>
+        <div>
+          <label htmlFor="iban" className={labelClass}>
+            IBAN
+          </label>
+          <input
+            id="iban"
+            type="text"
+            value={form.iban}
+            onChange={(e) => update("iban", e.target.value)}
+            placeholder="TN59…"
+            disabled={!initial.hasCreator}
+            className={inputClass}
+          />
+        </div>
+      </section>
+
       <div className="flex items-center justify-end gap-3">
-        {savedOk && (
-          <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-400">
-            <Check className="h-4 w-4" /> Saved
+        {saved && (
+          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--accent-lime-bright)]">
+            <Check className="h-4 w-4" />
+            Saved
           </span>
         )}
         <button
-          type="button"
-          onClick={handleSave}
-          disabled={!isDirty || saving}
-          className="flex items-center gap-2 rounded-xl bg-[var(--accent-violet)] px-6 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          type="submit"
+          disabled={saving}
+          className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-violet)] px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-[var(--accent-violet-hover)] active:scale-95 disabled:opacity-60"
         >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Save Changes
+          {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+          {saving ? "Saving…" : "Save changes"}
         </button>
       </div>
-    </div>
+    </form>
   );
 }

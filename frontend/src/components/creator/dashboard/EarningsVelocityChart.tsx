@@ -50,6 +50,11 @@ export function EarningsVelocityChart({
       </div>
 
       <div className="relative mt-8">
+        {data.length === 0 ? (
+          <div className="flex h-[200px] items-center justify-center text-sm text-[var(--text-secondary)]">
+            No earnings data yet.
+          </div>
+        ) : (
         <div className="flex h-[200px] items-end justify-between gap-3 px-2">
           {data.map((bar) => {
             const height = (bar.value / max) * 100;
@@ -75,6 +80,7 @@ export function EarningsVelocityChart({
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

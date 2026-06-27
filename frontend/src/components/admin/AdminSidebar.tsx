@@ -4,23 +4,23 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  PackagePlus,
-  Inbox,
+  Building2,
   Users,
-  Sparkles,
+  Repeat,
+  Wallet,
   LogOut,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const navItems = [
-  { href: "/brand/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/brand/add-product", label: "Add Product", icon: PackagePlus },
-  { href: "/brand/applicants", label: "Applicants", icon: Inbox },
-  { href: "/brand/invite-creators", label: "Browse Creators", icon: Users },
-  { href: "/brand/upgrade-plan", label: "Upgrade Plan", icon: Sparkles },
+  { href: "/admin/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/admin/brands", label: "Brands", icon: Building2 },
+  { href: "/admin/creators", label: "Creators", icon: Users },
+  { href: "/admin/conversions", label: "Conversions", icon: Repeat },
+  { href: "/admin/payouts", label: "Payouts", icon: Wallet },
 ];
 
-export function BrandSidebar() {
+export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -36,7 +36,7 @@ export function BrandSidebar() {
   return (
     <aside className="fixed top-0 left-0 z-50 flex h-full w-[240px] flex-col border-r border-[var(--border-outline)] bg-[var(--bg-sidebar)] py-6">
       <div className="mb-10 px-6">
-        <Link href="/brand/dashboard">
+        <Link href="/admin/dashboard">
           <h1
             className="text-2xl font-bold text-[var(--accent-violet-light)]"
             style={{ fontFamily: "var(--font-space-grotesk)" }}
@@ -45,7 +45,7 @@ export function BrandSidebar() {
           </h1>
         </Link>
         <p className="mt-1 text-xs font-semibold tracking-wider text-[var(--text-muted-variant)] uppercase">
-          Brand Workspace
+          Admin Console
         </p>
       </div>
 
@@ -53,7 +53,6 @@ export function BrandSidebar() {
         {navItems.map((item) => {
           const active = isActive(item.href);
           const Icon = item.icon;
-
           return (
             <Link
               key={item.href}
@@ -72,21 +71,6 @@ export function BrandSidebar() {
       </nav>
 
       <div className="mt-auto px-4 pb-6">
-        <div className="mb-4 rounded-xl border border-[var(--accent-violet)]/30 bg-[var(--bg-hover)] p-4">
-          <p className="mb-1 text-xs font-bold tracking-wider text-[var(--accent-violet-light)] uppercase">
-            Growth Plan
-          </p>
-          <p className="text-sm text-[var(--text-muted-variant)]">
-            Unlock unlimited campaigns.
-          </p>
-          <Link
-            href="/brand/upgrade-plan"
-            className="mt-3 inline-flex text-sm font-semibold text-[var(--accent-violet-light)] hover:underline"
-          >
-            Upgrade →
-          </Link>
-        </div>
-
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-[var(--text-muted-variant)] transition-all duration-200 hover:bg-[var(--bg-hover)] hover:text-red-400 active:scale-95"
