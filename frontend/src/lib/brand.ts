@@ -12,9 +12,10 @@ export type BrandRow = {
   is_verified: boolean | null;
 };
 
-// Returns the logged-in user's brand row, or null if they haven't set up their
-// store yet. Unlike creators we can't auto-create it (store_name/store_url are
-// required) — onboarding happens in Settings.
+// Returns the logged-in user's brand row. Since migration 008 the row is
+// created at signup by the handle_new_user trigger (store_url starts empty and
+// is completed in Settings), so this normally returns a row; null only for
+// legacy/edge accounts created before the trigger.
 export async function getBrand(supabase: ServerClient, userId: string): Promise<BrandRow | null> {
   const { data } = await supabase
     .from("brands")

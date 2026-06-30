@@ -19,6 +19,20 @@ export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Creator-specific profile fields.
+  const [niche, setNiche] = useState("");
+  const [bio, setBio] = useState("");
+  const [instagramUrl, setInstagramUrl] = useState("");
+  const [tiktokUrl, setTiktokUrl] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [audienceSize, setAudienceSize] = useState("");
+
+  // Brand-specific store fields.
+  const [storeName, setStoreName] = useState("");
+  const [storeUrl, setStoreUrl] = useState("");
+  const [description, setDescription] = useState("");
+  const [gtmId, setGtmId] = useState("");
+
   const passwordStrength = Math.min(
     100,
     (password.length / 12) * 100 + (/\d/.test(password) ? 15 : 0) + (/[A-Z]/.test(password) ? 15 : 0)
@@ -32,6 +46,34 @@ export function SignUpForm() {
       return;
     }
 
+    // Role-specific required fields — fill the brands/creators row with real
+    // data at signup (no auto-defaults).
+    let roleData: Record<string, string | number> = {};
+    if (role === "creator") {
+      if (!niche.trim()) return setError("Please choose your niche.");
+      if (!bio.trim()) return setError("Please add a short bio.");
+      if (!instagramUrl.trim() && !tiktokUrl.trim() && !youtubeUrl.trim()) {
+        return setError("Add at least one social link (Instagram, TikTok or YouTube).");
+      }
+      roleData = {
+        niche: niche.trim(),
+        bio: bio.trim(),
+        instagram_url: instagramUrl.trim(),
+        tiktok_url: tiktokUrl.trim(),
+        youtube_url: youtubeUrl.trim(),
+        audience_size: audienceSize.trim() || "0",
+      };
+    } else {
+      if (!storeName.trim()) return setError("Please enter your store name.");
+      if (!storeUrl.trim()) return setError("Please enter your store URL.");
+      roleData = {
+        store_name: storeName.trim(),
+        store_url: storeUrl.trim(),
+        description: description.trim(),
+        gtm_id: gtmId.trim(),
+      };
+    }
+
     setIsLoading(true);
     setError("");
 
@@ -39,10 +81,9 @@ export function SignUpForm() {
       email,
       password,
       options: {
-        data: {
-          role,
-          full_name: fullName,
-        },
+        // Consumed by the handle_new_user trigger to fill the brands/creators
+        // row with these real values.
+        data: { role, full_name: fullName, ...roleData },
       },
     });
 
@@ -221,20 +262,142 @@ export function SignUpForm() {
               </div>
             </div>
 
-            <div>
-              <label
-                htmlFor="handle"
-                className="mb-2 block text-sm font-medium text-muted"
-              >
-                {role === "creator" ? "Creator Handle" : "Brand Name"}
-              </label>
-              <input
-                id="handle"
-                type="text"
-                placeholder={role === "creator" ? "@yourcreator" : "Your Brand"}
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-auth-inner)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--placeholder-faint)] outline-none transition-colors focus:border-[var(--accent-violet)]/50 focus:ring-1 focus:ring-[var(--accent-violet)]/30"
-              />
-            </div>
+            {role === "creator" ? (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="niche" className="mb-2 block text-sm font-medium text-muted">
+                      Niche
+                    </label>
+                    <select
+                      id="niche"
+                      value={niche}
+                      onChange={(e) => setNiche(e.target.value)}
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-auth-inner)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none transition-colors focus:border-[var(--accent-violet)]/50 focus:ring-1 focus:ring-[var(--accent-violet)]/30"
+                    >
+                      <option value="">Select a niche</option>
+                      {["Beauty", "Fashion", "Tech", "Fitness", "Food", "Travel", "Gaming", "Lifestyle", "Home", "Finance"].map((n) => (
+                        <option key={n} value={n.toLowerCase()}>{n}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="audienceSize" className="mb-2 block text-sm font-medium text-muted">
+                      Audience size <span className="text-[var(--placeholder-faint)]">(optional)</span>
+                    </label>
+                    <input
+                      id="audienceSize"
+                      type="number"
+                      min="0"
+                      value={audienceSize}
+                      onChange={(e) => setAudienceSize(e.target.value)}
+                      placeholder="10000"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-auth-inner)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--placeholder-faint)] outline-none transition-colors focus:border-[var(--accent-violet)]/50 focus:ring-1 focus:ring-[var(--accent-violet)]/30"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="bio" className="mb-2 block text-sm font-medium text-muted">
+                    Bio
+                  </label>
+                  <textarea
+                    id="bio"
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Tell brands about your content & audience"
+                    className="min-h-[80px] w-full resize-y rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-auth-inner)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--placeholder-faint)] outline-none transition-colors focus:border-[var(--accent-violet)]/50 focus:ring-1 focus:ring-[var(--accent-violet)]/30"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-muted">
+                    Social links <span className="text-[var(--placeholder-faint)]">(at least one)</span>
+                  </label>
+                  <div className="space-y-3">
+                    <input
+                      type="url"
+                      value={instagramUrl}
+                      onChange={(e) => setInstagramUrl(e.target.value)}
+                      placeholder="Instagram URL"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-auth-inner)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--placeholder-faint)] outline-none transition-colors focus:border-[var(--accent-violet)]/50 focus:ring-1 focus:ring-[var(--accent-violet)]/30"
+                    />
+                    <input
+                      type="url"
+                      value={tiktokUrl}
+                      onChange={(e) => setTiktokUrl(e.target.value)}
+                      placeholder="TikTok URL"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-auth-inner)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--placeholder-faint)] outline-none transition-colors focus:border-[var(--accent-violet)]/50 focus:ring-1 focus:ring-[var(--accent-violet)]/30"
+                    />
+                    <input
+                      type="url"
+                      value={youtubeUrl}
+                      onChange={(e) => setYoutubeUrl(e.target.value)}
+                      placeholder="YouTube URL"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-auth-inner)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--placeholder-faint)] outline-none transition-colors focus:border-[var(--accent-violet)]/50 focus:ring-1 focus:ring-[var(--accent-violet)]/30"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="storeName" className="mb-2 block text-sm font-medium text-muted">
+                      Store name
+                    </label>
+                    <input
+                      id="storeName"
+                      type="text"
+                      value={storeName}
+                      onChange={(e) => setStoreName(e.target.value)}
+                      placeholder="Glow Cosmetics"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-auth-inner)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--placeholder-faint)] outline-none transition-colors focus:border-[var(--accent-violet)]/50 focus:ring-1 focus:ring-[var(--accent-violet)]/30"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="storeUrl" className="mb-2 block text-sm font-medium text-muted">
+                      Store URL
+                    </label>
+                    <input
+                      id="storeUrl"
+                      type="url"
+                      value={storeUrl}
+                      onChange={(e) => setStoreUrl(e.target.value)}
+                      placeholder="https://glow.converty.shop"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-auth-inner)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--placeholder-faint)] outline-none transition-colors focus:border-[var(--accent-violet)]/50 focus:ring-1 focus:ring-[var(--accent-violet)]/30"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="description" className="mb-2 block text-sm font-medium text-muted">
+                    Description <span className="text-[var(--placeholder-faint)]">(optional)</span>
+                  </label>
+                  <textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Beauty & skincare brand"
+                    className="min-h-[80px] w-full resize-y rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-auth-inner)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--placeholder-faint)] outline-none transition-colors focus:border-[var(--accent-violet)]/50 focus:ring-1 focus:ring-[var(--accent-violet)]/30"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="gtmId" className="mb-2 block text-sm font-medium text-muted">
+                    GTM Container ID <span className="text-[var(--placeholder-faint)]">(optional)</span>
+                  </label>
+                  <input
+                    id="gtmId"
+                    type="text"
+                    value={gtmId}
+                    onChange={(e) => setGtmId(e.target.value)}
+                    placeholder="GTM-XXXXXX"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-auth-inner)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--placeholder-faint)] outline-none transition-colors focus:border-[var(--accent-violet)]/50 focus:ring-1 focus:ring-[var(--accent-violet)]/30"
+                  />
+                </div>
+              </>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { Loader2, CheckCircle2, Store } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const inputClass =
@@ -14,6 +15,7 @@ export function AddProductForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsStore, setNeedsStore] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const [form, setForm] = useState({
@@ -51,7 +53,10 @@ export function AddProductForm() {
         .maybeSingle();
 
       if (brandError || !brand) {
-        setError("No brand profile found for your account.");
+        // No brands row yet — brand hasn't completed store onboarding (it's not
+        // auto-created because store_name/store_url are required). Guide them to
+        // Settings instead of showing a cryptic error.
+        setNeedsStore(true);
         setLoading(false);
         return;
       }
@@ -93,6 +98,30 @@ export function AddProductForm() {
       setLoading(false);
     }
   };
+
+  if (needsStore) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-[var(--border-outline)] bg-[var(--bg-card)] py-20 text-center">
+        <Store className="h-14 w-14 text-[var(--accent-violet)]" />
+        <h3
+          className="text-2xl font-bold text-[var(--text-primary)]"
+          style={{ fontFamily: "var(--font-space-grotesk)" }}
+        >
+          Set up your store first
+        </h3>
+        <p className="max-w-md text-[var(--text-secondary)]">
+          You need to add your store details (name &amp; URL) before you can create
+          campaigns.
+        </p>
+        <Link
+          href="/brand/settings"
+          className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[var(--accent-violet)] px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-[var(--accent-violet-hover)] active:scale-95"
+        >
+          Set up store
+        </Link>
+      </div>
+    );
+  }
 
   if (success) {
     return (
